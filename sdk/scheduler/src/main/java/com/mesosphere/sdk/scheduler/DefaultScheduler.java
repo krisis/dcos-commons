@@ -759,7 +759,6 @@ public class DefaultScheduler implements Scheduler, Observer {
     public void update(Observable observable) {
         if (observable == planCoordinator) {
             suppressOrRevive();
-            clearPermanentlyFailedPods();
             completeDeploy();
         }
     }
@@ -771,22 +770,6 @@ public class DefaultScheduler implements Scheduler, Observer {
                     updateResult.getDeploymentType().name().getBytes(StandardCharsets.UTF_8));
         }
     }
-
-    private void clearPermanentlyFailedPods() {
-        Collection<PodInstance> completePods = planCoordinator.getPlanManagers().stream()
-                .map(planManager -> planManager.getPlan())
-                .filter(plan -> plan.getName().equals(DefaultRecoveryPlanManager.DEFAULT_RECOVERY_PLAN_NAME))
-                .flatMap(plan -> plan.getChildren().stream())
-                .flatMap(phase -> phase.getChildren().stream())
-                .filter(step -> step.isComplete())
-                .filter(step -> step.getPodInstanceRequirement().isPresent())
-                .map(step -> step.getPodInstanceRequirement().get().getPodInstance())
-                .collect(Collectors.toList());
-
-        completePods.forEach(
-                podInstance -> stateStore.storeTasks(FailureUtils.clearFailed(podInstance, stateStore)));
-    }
-
 
     @Override
     public void registered(SchedulerDriver driver, Protos.FrameworkID frameworkId, Protos.MasterInfo masterInfo) {
